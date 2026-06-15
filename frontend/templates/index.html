@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>金融舆情分析系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">FS</div>
+      <div>
+        <div class="brand-title">金融舆情分析</div>
+        <div class="brand-subtitle">Financial Sentiment Intelligence</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard', this)">总览</button>
+      <button class="nav-item" data-page="sentiment" onclick="showPage('sentiment', this)">情感分析</button>
+      <button class="nav-item" data-page="topics" onclick="showPage('topics', this)">主题模型</button>
+      <button class="nav-item" data-page="news" onclick="showPage('news', this)">舆情明细</button>
+      <button class="nav-item" data-page="control" onclick="showPage('control', this)">采集控制</button>
+    </nav>
+    <div class="sidebar-note">
+      数据源：新浪财经、东方财富、巨潮资讯、东方财富股吧<br>
+      模型：SnowNLP + 金融词典修正 + LDA
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="page-kicker">Big Data Design and Analysis</div>
+        <h1 id="page-title">舆情总览</h1>
+      </div>
+      <div class="topbar-meta">
+        <span id="last-crawl">最近采集：--</span>
+        <span id="clock">--:--:--</span>
+      </div>
+    </header>
+
+    <section class="page active" id="page-dashboard">
+      <div class="stat-cards">
+        <div class="stat-card"><span>舆情文本</span><strong id="s-total">--</strong><em>统一入库记录</em></div>
+        <div class="stat-card"><span>已分析</span><strong id="s-analyzed">--</strong><em>情感与主题</em></div>
+        <div class="stat-card"><span>公告</span><strong id="s-announcements">--</strong><em>正式披露文本</em></div>
+        <div class="stat-card"><span>评论</span><strong id="s-comments">--</strong><em>投资者讨论</em></div>
+      </div>
+
+      <div class="grid two-one">
+        <div class="panel">
+          <div class="panel-title">情感舆情趋势</div>
+          <div id="chart-trend" class="chart large"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">情感结构</div>
+          <div id="chart-pie" class="chart large"></div>
+        </div>
+      </div>
+
+      <div class="grid half">
+        <div class="panel">
+          <div class="panel-title">平台情感对比</div>
+          <div id="chart-source" class="chart medium"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">舆情热词</div>
+          <div id="chart-wordcloud" class="chart medium"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">最新舆情动态</div>
+        <div id="latest-news-list" class="news-mini-list"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-sentiment">
+      <div class="grid half">
+        <div class="panel">
+          <div class="panel-title">情感得分分布</div>
+          <div id="chart-hist" class="chart medium"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">文本类型平均情感</div>
+          <div id="chart-doc-type" class="chart medium"></div>
+        </div>
+      </div>
+      <div class="grid half">
+        <div class="panel">
+          <div class="panel-title">正负面占比 - 按来源</div>
+          <div id="chart-bar-source" class="chart medium"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">情感指数时间序列</div>
+          <div id="chart-sentiment-index" class="chart medium"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">模型诊断</div>
+        <div id="model-eval" class="eval-grid"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-topics">
+      <div class="grid half">
+        <div class="panel">
+          <div class="panel-title">LDA 主题分布</div>
+          <div id="chart-topic-bar" class="chart large"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">主题占比</div>
+          <div id="chart-topic-pie" class="chart large"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">主题-情感交叉分析</div>
+        <div id="chart-topic-sentiment" class="chart large"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-news">
+      <div class="filter-bar">
+        <input class="filter-input" id="kw-input" placeholder="搜索标题、正文、股票代码或公司名称">
+        <select class="filter-select" id="source-select"><option value="">全部来源</option></select>
+        <select class="filter-select" id="doc-type-select">
+          <option value="">全部类型</option>
+          <option value="news">新闻</option>
+          <option value="announcement">公告</option>
+          <option value="comment">评论</option>
+          <option value="sample">样本</option>
+        </select>
+        <select class="filter-select" id="sentiment-select">
+          <option value="">全部情感</option>
+          <option value="positive">正面</option>
+          <option value="negative">负面</option>
+          <option value="neutral">中性</option>
+        </select>
+        <button class="btn primary" onclick="loadNews(1)">筛选</button>
+      </div>
+      <div class="table-wrap">
+        <table class="news-table">
+          <thead><tr><th>标题</th><th>来源</th><th>类型</th><th>情感</th><th>得分</th><th>主题</th><th>时间</th></tr></thead>
+          <tbody id="news-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </section>
+
+    <section class="page" id="page-control">
+      <div class="control-grid">
+        <div class="panel control-card">
+          <div class="panel-title">数据采集</div>
+          <p>实时抓取财经新闻、上市公司公告和股吧评论，并统一写入本地 MySQL。</p>
+          <label class="inline-field">采集页数 <input type="number" id="crawl-pages" value="2" min="1" max="8"></label>
+          <button class="btn primary wide" onclick="doCrawl()" id="crawl-btn">开始采集</button>
+          <div class="result-box" id="crawl-result"></div>
+        </div>
+        <div class="panel control-card">
+          <div class="panel-title">模型分析</div>
+          <p>对未分析文本执行情感分类与 LDA 主题建模，结果写入 MySQL 并同步刷新图表。</p>
+          <button class="btn success wide" onclick="doAnalyze()" id="analyze-btn">开始分析</button>
+          <div class="result-box" id="analyze-result"></div>
+        </div>
+      </div>
+      <div class="grid half">
+        <div class="panel">
+          <div class="panel-title">采集来源结构</div>
+          <div id="chart-source-pie" class="chart medium"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">最近采集日志</div>
+          <div id="crawl-logs" class="log-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
